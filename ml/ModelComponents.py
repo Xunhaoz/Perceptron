@@ -48,6 +48,20 @@ class Relu:
         return gradient
 
 
+class Softmax:
+    def __init__(self):
+        self.last_X = None
+
+    def forward(self, X):
+        self.last_X = X
+        shift_X = X - np.max(X, axis=-1, keepdims=True)
+        softmax_output = np.exp(shift_X) / np.sum(np.exp(shift_X), axis=-1, keepdims=True)
+        return softmax_output
+
+    def backward(self, gradient, learning_rate):
+        return gradient * self.last_X
+
+
 class Model:
     def __init__(self, layers):
         self.layers = layers

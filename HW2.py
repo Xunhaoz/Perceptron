@@ -1,40 +1,40 @@
 import copy
+
+import numpy as np
 from tqdm import tqdm
 import pandas as pd
 import matplotlib.pyplot as plt
 
 from utils.DataLoader import DataLoader
-from utils.metrics import mean_square_error, root_mean_square_error, accuracy_for_regression_iris
-from utils.loss import mean_square_error_loss
-from ml.ModelComponents import Linear, Model, Relu
+from utils.metrics import root_mean_square_error, accuracy_for_regression_iris, cross_entropy
+from utils.loss import cross_entropy_loss
+from ml.ModelComponents import Linear, Model, Relu, Softmax
 
 
-def train(data_loader, train=True):
-    avg_mean_square_error, avg_root_mean_square_error, avg_accuracy = 0, 0, 0
+def train(data_loader):
+    avg_cross_entropy, avg_root_mean_square_error, avg_accuracy, = 0, 0, 0
     for X, y in copy.deepcopy(data_loader):
         pred = model.forward(X)
 
-        if train:
-            model.backward(mean_square_error_loss(y, pred), learning_rate=LEARNING_RATE)
+        model.backward(cross_entropy_loss(y, pred), learning_rate=LEARNING_RATE)
 
-        avg_mean_square_error += mean_square_error(y, pred)
+        avg_cross_entropy += cross_entropy(y, pred)
         avg_root_mean_square_error += root_mean_square_error(y, pred)
         avg_accuracy += accuracy_for_regression_iris(y, pred)
 
-    return avg_mean_square_error / data_loader.__len__(), \
+    return avg_cross_entropy / data_loader.__len__(), \
            avg_root_mean_square_error / data_loader.__len__(), \
            avg_accuracy / data_loader.__len__()
 
 
-LEARNING_RATE = 0.0001
-BATCH_SIZE = 1
+LEARNING_RATE = 0.01
+BATCH_SIZE = 2
+EPOCH = 100
 
 model = Model([
-    Linear(4, 8),
+    Linear(4, 10),
     Relu(),
-    Linear(8, 8),
-    Relu(),
-    Linear(8, 1),
+    Linear(10, 3)
 ])
 
 data = pd.concat([
@@ -42,23 +42,23 @@ data = pd.concat([
     pd.read_csv('dataset/iris_out.csv', header=None)], axis=1
 )
 
-train_loader = DataLoader(data[:75], batch_size=BATCH_SIZE)
-test_loader = DataLoader(data[-75:], batch_size=BATCH_SIZE)
+train_loader = DataLoader(data[:75], batch_size=BATCH_SIZE, one_hot_encode=True)
+test_loader = DataLoader(data[-75:], batch_size=BATCH_SIZE, one_hot_encode=True)
 
-train_mse = []
+train_ce = []
 train_rmse = []
 train_acc = []
-for epoch in tqdm(range(100)):
-    mse, rmse, acc = train(train_loader, train=True)
-    train_mse.append(mse)
+for epoch in tqdm(range(EPOCH)):
+    ce, rmse, acc = train(train_loader)
+    train_ce.append(ce)
     train_rmse.append(rmse)
     train_acc.append(acc)
 
-mse, rmse, acc = train(test_loader, train=True)
-print(f"Test MSE: {mse}, RMSE: {rmse}, Accuracy: {acc}")
+mse, rmse, acc = train(test_loader)
+print(f"Test CE: {mse}, RMSE: {rmse}, Accuracy: {acc}")
 
 df = pd.DataFrame({
-    'mean_square_error': train_mse[5:],
+    'cross_entropy': train_ce[5:],
     'root_mean_square_error': train_rmse[5:],
     'avg_accuracy': train_acc[5:],
 })
